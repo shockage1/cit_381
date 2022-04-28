@@ -1,0 +1,14 @@
+[Unit]
+Description = Python 3 Script for Smart Doorbell System on Raspbian
+After = network.target
+
+[Service]
+Type = simple
+ExecStart = /usr/bin/python3 /usr/local/bin/doorbell.py
+Restart = always
+SyslogIdentifier = /var/log/doorbell.log
+RestartSec = 5
+TimeoutStartSec = infinity
+
+[Install]
+WantedBy = multi-user.target
