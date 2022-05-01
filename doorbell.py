@@ -34,7 +34,7 @@ armed = True
 
 # Email/texting variable configurations
 gmail_user = 'disibiod1pi@gmail.com'
-gmail_password = 'yhclpcskuuryjshg'
+gmail_password = '' # REDACTED, use .tar.bz2 file
 recipient = '' # configured from setup.sh
 carrier = '' # configured from setup.sh
 # Map carrier to respective gateway domain in dictionary
