@@ -20,6 +20,6 @@ if [[ -f "/usr/local/bin/doorbell.py" ]]; then
 	systemctl daemon-reload
 	systemctl reset-failed
 else
-	echo "Doorbell system not already installed"
+	echo "Doorbell system is not installed"
 	exit 0
 fi
