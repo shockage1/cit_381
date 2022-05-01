@@ -7,7 +7,7 @@
 
 # ***USE SETUP.SH TO CONFIGURE SCRIPT***
 
-from gpiozero import LED,Button
+from gpiozero import LED, Button, Buzzer
 from picamera import PiCamera
 import smtplib
 import time
@@ -17,17 +17,24 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 import subprocess
+import I2C_LCD_driver
+from signal import pause
 
 reed = Button(12, bounce_time = 0.25)   # GPIO 12
 button = Button(26, bounce_time = 0.25) # GPIO 26
+armSwitch = Button(19, bounce_time = 0.25)
+buzzer = Buzzer(21)
+thelcd = I2C_LCD_driver.lcd()
 camera = PiCamera()
 
 path='/tmp/'
 ext='.jpg'
+finish_time = int(time.time()) # Initialize for first iteration of epoch debounce
+armed = True
 
 # Email/texting variable configurations
 gmail_user = 'disibiod1pi@gmail.com'
-gmail_password = 'ppkdrassajquzozy'
+gmail_password = 'yhclpcskuuryjshg'
 recipient = '' # configured from setup.sh
 carrier = '' # configured from setup.sh
 # Map carrier to respective gateway domain in dictionary
@@ -41,19 +48,52 @@ carrier_map = {
     "7": "@vmpix.com", # virgin
 }
 
-finish_time = int(time.time()) # Initialize for first iteration of debounce
-
 def log(level, topic, data): # Use rsyslog to log events
     # Level denotes severity of log, topic is environment of log, data is log text
     subprocess.run(['logger', '-p', 'local5.'+level, '-t', topic, data]) # Subprocess to make things easy
 
+def timestamp(): # Return updated datetime whenever called
+    return datetime.datetime.now()
+
+def writeLCD(string, line=1): # Requires only string/line to write out to LCD
+    padding = " " * 16
+    padded_string = string + padding
+    thelcd.lcd_display_string(padded_string, line)
+
+def armCamera(): # Enable or disable alarm with button
+    global armed
+    if armed == False:
+        armed = True
+        log('info', 'System', 'Camera system has been armed')
+        writeLCD('Camera armed')
+    elif armed == True:
+        armed = False
+        log('info', 'System', 'Camera system has been disarmed')
+        writeLCD('Camera disarmed')
+
 def reedDisconnect():
-    log('info', 'Door', 'Reed disconnected')
-    capturePicture('Door opened') # Pass trigger type to text msg later
+    global armed
+    writeLCD( timestamp().strftime('%H:%M Door open') ,2)
+    if armed == True:
+        log('info', 'Door', 'Reed disconnected')
+        capturePicture('Door opened') # Pass trigger type to text msg later
+    else:
+        log('info', 'System', 'Door has been opened while camera disarmed')
 
 def doorbell():
-    log('info', 'Doorbell', 'Doorbell rung')
-    capturePicture('Doorbell rung') # Pass trigger type to text msg later
+    global armed
+    writeLCD( timestamp().strftime('%H:%M Bell rung') ,2)
+    ring()
+    if armed == True:
+        log('info', 'Doorbell', 'Doorbell rung')
+        capturePicture('Doorbell rung') # Pass trigger type to text msg later
+    else:
+        log('info', 'System', 'Doorbell has been rung while camera disarmed')
+
+def ring():
+    buzzer.on()
+    time.sleep(1)
+    buzzer.off()
 
 def capturePicture(text):
     global finish_time
@@ -62,7 +102,7 @@ def capturePicture(text):
     # Keeps detecting button presses or reed disconnect for logging
     if epoch_time > finish_time: 
         finish_time = epoch_time + 60 # Reset debounce
-        picturepath = path + str(datetime.datetime.now()) + ext # timestamp the capture
+        picturepath = path + str(timestamp()) + ext # timestamp the capture
         try:
             camera.capture(picturepath)
         except:
@@ -99,12 +139,11 @@ def sendText(picturepath, alarmtype):
 
 def main():
     log('info', 'System', 'Doorbell system successfully started')
-    while True:
-        if reed.value == 0:
-            reedDisconnect()
-        if button.value == 1:
-            doorbell()
-        time.sleep(1) # Prevent main loop from executing too fast
+    writeLCD('Camera armed')
+    armSwitch.when_pressed = armCamera
+    button.when_pressed = doorbell
+    reed.when_released = reedDisconnect
+    pause()
 
 if __name__ == '__main__': # Call the main function
     main()

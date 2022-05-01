@@ -30,6 +30,12 @@ else
 	[[ "$carrier" = '1' || "$carrier" = '2' || "$carrier" = '3' || "$carrier" = '4' || "$carrier" = '5' || "$carrier" = '6' || "$carrier" = '7' ]] || { echo "Invalid input, please try again"; exit 1; }
 	sed -i '\;user.*;a local5.*				/var/log/doorbell.log' /etc/rsyslog.conf
 	systemctl restart rsyslog
+	if [[ ! -f "/usr/lib/python3.9/I2C_LCD_driver.py" ]]; then
+		mv -f ./I2C_LCD_driver.py /usr/lib/python3.9/
+	else
+		rm -f ./I2C_LCD_driver.py
+		echo "I2C LCD driver already installed"
+	fi
 	mv ./doorbell.py /usr/local/bin
 	sed -i '\;/var/log/messages;a /var/log/doorbell.log' /etc/logrotate.d/rsyslog
 	sed -i "s/recipient = ''/recipient = '$number'/" /usr/local/bin/doorbell.py
